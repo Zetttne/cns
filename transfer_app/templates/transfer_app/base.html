@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Group Transfer System{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .main-container {
+            max-width: 1400px;
+            margin: 20px auto;
+        }
+        .header-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header-bar a {
+            color: white;
+            text-decoration: none;
+        }
+        .header-bar a:hover {
+            opacity: 0.9;
+        }
+        .content-wrapper {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .batch-item {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            transition: box-shadow 0.2s;
+        }
+        .batch-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .batch-header {
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            padding: 0.75rem 1rem;
+        }
+        .request-row {
+            padding: 0.5rem 1rem;
+            border-bottom: 1px dashed #e9ecef;
+            display: grid;
+            grid-template-columns: 30px 100px 100px 100px 120px 100px 120px 100px 80px;
+            gap: 0.5rem;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        .request-row:last-child {
+            border-bottom: none;
+        }
+        .badge-custom {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .old-batch-bg { background:#fff1f0 !important; }
+        .old-batch-border { border-color:#dc3545 !important; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        {% if user.is_authenticated %}
+        <nav class="navbar navbar-expand-lg navbar-dark header-bar mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="{% url 'transfer_app:dashboard' %}">
+                    <i class="bi bi-arrow-left-right"></i> Group Transfer System
+                </a>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-white">
+                        <i class="bi bi-person-circle"></i> {{ user.username }} 
+                        <span class="badge bg-light text-dark">{{ user.profile.role }}</span>
+                    </span>
+                    <a href="{% url 'transfer_app:logout' %}" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </nav>
+        {% endif %}
+        
+        <div class="content-wrapper">
+            <div class="p-4">
+                {% if messages %}
+                <div class="messages mb-3">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="mt-4 pb-4">
+            <div class="card shadow-sm">
+                <div class="card-body py-3">
+                    <div class="row align-items-center g-3">
+                        <div class="col-12 col-md-6">
+                            <h6 class="mb-2"><i class="bi bi-person-badge"></i> Được tạo bởi</h6>
+                            <p class="mb-1"><strong>Nguyễn Ngọc Hiền</strong> - Data Processor</p>
+                            <p class="small text-muted mb-2"><i class="bi bi-info-circle"></i> Mọi thắc mắc vui lòng liên hệ Hiền Data để được hỗ trợ</p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="https://hiennguyen.blog" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-globe"></i> Blog
+                                </a>
+                                <a href="https://www.facebook.com/nguyenngochien.z/" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-facebook"></i> Facebook
+                                </a>
+                                <a href="https://www.youtube.com/@hznguyenraptv" target="_blank" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-youtube"></i> YouTube
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 text-center text-md-end">
+                            <p class="small mb-2">Kết bạn Zalo</p>
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://zalo.me/your-zalo-id" 
+                                 alt="Zalo QR" 
+                                 class="img-fluid" 
+                                 style="max-width:120px; border:1px solid #ddd; border-radius:8px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

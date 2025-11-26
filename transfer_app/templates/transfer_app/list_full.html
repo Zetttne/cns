@@ -1,0 +1,102 @@
+{% extends "transfer_app/base.html" %}
+{% load tz transfer_extras %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="container-fluid px-2 px-md-3" style="max-width:1100px;">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
+    <h2 class="h5 mb-0"><i class="bi bi-list-ul"></i> {{ title }}</h2>
+    <a href="{% url 'transfer_app:dashboard' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Quay lại Dashboard</a>
+  </div>
+  <!-- Desktop table view -->
+  <div class="card shadow-sm mb-3 d-none d-md-block">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>MSNV</th>
+            <th>Từ</th>
+            <th>→</th>
+            <th>Đến</th>
+            <th>Loại</th>
+            <th>Trạng thái</th>
+            {% if mode == 'created' %}<th>Tạo</th>{% endif %}
+            {% if mode == 'approved' %}<th>Duyệt</th>{% endif %}
+            {% if mode == 'confirmed' %}<th>Xác nhận</th>{% endif %}
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in page_obj.object_list %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.msnv }}</td>
+            <td>{{ r.from_code }}</td>
+            <td class="text-muted">→</td>
+            <td>{{ r.to_code }}</td>
+            <td>{% if r.is_permanent %}<span class="badge bg-success">Vĩnh viễn</span>{% else %}<span class="badge bg-warning text-dark">Tạm thời</span>{% endif %}</td>
+            <td>
+              {% if r.status == 'PENDING' %}<span class="badge bg-warning text-dark">Chờ duyệt</span>
+              {% elif r.status == 'APPROVED' %}<span class="badge bg-info">Đã duyệt</span>
+              {% elif r.status == 'CONFIRMED' %}<span class="badge bg-success">Hoàn tất</span>
+              {% elif r.status == 'REJECTED' %}<span class="badge bg-danger">Từ chối</span>
+              {% elif r.status == 'CANCELED' %}<span class="badge bg-secondary">Đã hủy</span>{% endif %}
+            </td>
+            {% if mode == 'created' %}<td class="text-muted" style="font-size:12px;">{{ r.created_at|relative_time }}</td>{% endif %}
+            {% if mode == 'approved' %}<td class="text-muted" style="font-size:12px;">{{ r.approved_at|relative_time }}</td>{% endif %}
+            {% if mode == 'confirmed' %}<td class="text-muted" style="font-size:12px;">{{ r.confirmed_at|relative_time }}</td>{% endif %}
+            <td><a href="{% url 'transfer_app:view_request' r.id %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i></a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="11" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Mobile card view -->
+  <div class="d-md-none">
+    {% for r in page_obj.object_list %}
+    <div class="card mb-2 shadow-sm">
+      <div class="card-body p-2">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <strong>#{{ r.id }}</strong>
+          <a href="{% url 'transfer_app:view_request' r.id %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Xem</a>
+        </div>
+        <div class="small">
+          <div><strong>MSNV:</strong> {{ r.msnv }}</div>
+          <div><strong>Chuyển:</strong> {{ r.from_code }} → {{ r.to_code }}</div>
+          <div class="mt-1">
+            {% if r.is_permanent %}<span class="badge bg-success">Vĩnh viễn</span>{% else %}<span class="badge bg-warning text-dark">Tạm thời</span>{% endif %}
+            {% if r.status == 'PENDING' %}<span class="badge bg-warning text-dark">Chờ duyệt</span>
+            {% elif r.status == 'APPROVED' %}<span class="badge bg-info">Đã duyệt</span>
+            {% elif r.status == 'CONFIRMED' %}<span class="badge bg-success">Hoàn tất</span>
+            {% elif r.status == 'REJECTED' %}<span class="badge bg-danger">Từ chối</span>
+            {% elif r.status == 'CANCELED' %}<span class="badge bg-secondary">Đã hủy</span>{% endif %}
+          </div>
+          <div class="text-muted" style="font-size:11px; margin-top:4px;">
+            {% if mode == 'created' %}Tạo: {{ r.created_at|relative_time }}{% endif %}
+            {% if mode == 'approved' %}Duyệt: {{ r.approved_at|relative_time }}{% endif %}
+            {% if mode == 'confirmed' %}Xác nhận: {{ r.confirmed_at|relative_time }}{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="card shadow-sm"><div class="card-body text-center text-muted py-4">Không có dữ liệu</div></div>
+    {% endfor %}
+  </div>
+  <nav aria-label="Page nav" class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+    <div class="small text-muted">Tổng: {{ page_obj.paginator.count }} | Trang {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</div>
+    <ul class="pagination pagination-sm mb-0">
+      {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">«</a></li>
+      {% endif %}
+      <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+      {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">»</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endblock %}

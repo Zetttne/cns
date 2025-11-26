@@ -1,0 +1,188 @@
+{% extends "transfer_app/base.html" %}
+{% load tz transfer_extras %}
+
+{% block title %}Chi tiết yêu cầu chuyển nhóm{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 960px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 mb-0"><i class="bi bi-file-earmark-text"></i> Yêu cầu #{{ request_data.id }}</h2>
+        <a href="{% url 'transfer_app:dashboard' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Quay lại</a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header small fw-semibold"><i class="bi bi-clock-history"></i> Dòng thời gian</div>
+        <ul class="list-group list-group-flush small">
+            <li class="list-group-item"><i class="bi bi-pencil"></i> Tạo bởi <strong>{{ request_data.requested_by.username }}</strong> <span class="text-muted">{{ request_data.created_at|relative_time }}</span></li>
+            {% if request_data.approved_by %}
+            <li class="list-group-item"><i class="bi bi-check-circle"></i> Duyệt bởi <strong>{{ request_data.approved_by.username }}</strong> <span class="text-muted">{{ request_data.approved_at|relative_time }}</span></li>
+            {% endif %}
+            {% if request_data.confirmed_by %}
+            <li class="list-group-item"><i class="bi bi-check2-circle"></i> Xác nhận bởi <strong>{{ request_data.confirmed_by.username }}</strong> <span class="text-muted">{{ request_data.confirmed_at|relative_time }}</span></li>
+            {% endif %}
+            {% if request_data.rejection_reason %}
+            <li class="list-group-item text-danger"><i class="bi bi-x-circle"></i> Từ chối bởi <strong>{{ request_data.rejected_by.username }}</strong> <em>{{ request_data.rejection_reason }}</em> <span class="text-muted">{{ request_data.rejected_at|relative_time }}</span></li>
+            {% endif %}
+            {% if request_data.canceled_by %}
+            <li class="list-group-item text-secondary"><i class="bi bi-trash"></i> Hủy bởi <strong>{{ request_data.canceled_by.username }}</strong> <span class="text-muted">{{ request_data.canceled_at|relative_time }}</span></li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex flex-wrap gap-2 align-items-center">
+            <span class="badge bg-primary">#{{ request_data.id }}</span>
+            {% if request_data.status == 'PENDING' %}
+                <span class="badge bg-warning text-dark">Chờ duyệt</span>
+            {% elif request_data.status == 'APPROVED' %}
+                <span class="badge bg-info">Đã duyệt</span>
+            {% elif request_data.status == 'CONFIRMED' %}
+                <span class="badge bg-success">Hoàn tất</span>
+            {% elif request_data.status == 'REJECTED' %}
+                <span class="badge bg-danger">Từ chối</span>
+            {% elif request_data.status == 'CANCELED' %}
+                <span class="badge bg-secondary">Đã hủy</span>
+            {% endif %}
+            <small class="text-muted">Tạo {{ request_data.created_at|relative_time }}</small>
+            {% if request_data.batch %}
+                <span class="badge bg-secondary">Phiếu {{ request_data.batch.batch_number }}</span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if request_data.batch %}
+            <div class="alert alert-info py-2 mb-3">
+                <i class="bi bi-collection"></i> Phiếu: <strong>{{ request_data.batch.batch_number }}</strong> - {{ request_data.batch.description }}<br>
+                <small class="text-muted">Tạo bởi {{ request_data.batch.created_by.username }} • {{ request_data.batch.created_at|localtime|date:"d/m/Y H:i" }}{% if request_data.batch.designated_lead %} • Lead: {{ request_data.batch.designated_lead.username }}{% endif %}</small>
+            </div>
+            {% endif %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">MSNV</label>
+                    <div class="fw-semibold">{{ request_data.msnv }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Loại chuyển</label>
+                    {% if request_data.is_permanent %}
+                        <span class="badge bg-success">Vĩnh viễn</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Tạm thời</span>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Nhóm hiện tại</label>
+                    <div>{{ request_data.from_code }} {% if request_data.from_group %}<small class="text-muted">({{ request_data.from_group.name }})</small>{% endif %}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Nhóm chuyển đến</label>
+                    <div>{{ request_data.to_code }} {% if request_data.to_group %}<small class="text-muted">({{ request_data.to_group.name }})</small>{% endif %}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Ngày hiệu lực</label>
+                    <div>{{ request_data.effective_date|date:"d/m/Y" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Người tạo</label>
+                    <div>{{ request_data.requested_by.username }}</div>
+                </div>
+                {% if request_data.approved_by %}
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Duyệt bởi</label>
+                    <div>{{ request_data.approved_by.username }} <small class="text-muted">{{ request_data.approved_at|relative_time }}</small></div>
+                </div>
+                {% endif %}
+                {% if request_data.confirmed_by %}
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Xác nhận bởi</label>
+                    <div>{{ request_data.confirmed_by.username }} <small class="text-muted">{{ request_data.confirmed_at|relative_time }}</small></div>
+                </div>
+                {% endif %}
+                {% if request_data.rejection_reason %}
+                <div class="col-12">
+                    <label class="form-label small mb-0">Lý do từ chối</label>
+                    <div class="text-danger">{{ request_data.rejection_reason }}{% if request_data.rejected_by %} - {{ request_data.rejected_by.username }}{% endif %} <small class="text-muted">{{ request_data.rejected_at|relative_time }}</small></div>
+                </div>
+                {% endif %}
+                {% if request_data.canceled_by %}
+                <div class="col-12">
+                    <label class="form-label small mb-0">Hủy bởi</label>
+                    <div>{{ request_data.canceled_by.username }} <small class="text-muted">{{ request_data.canceled_at|relative_time }}</small></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if user.is_authenticated and user.profile.role == 'SUPERVISOR' and request_data.status == 'PENDING' %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-secondary text-white small">Supervisor</div>
+        <div class="card-body p-3">
+            <form method="post" action="{% url 'transfer_app:cancel_request' request_data.id %}" onsubmit="return confirm('Hủy yêu cầu này?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-warning w-100"><i class="bi bi-trash"></i> Hủy yêu cầu</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if user.is_authenticated and user.profile.role == 'LEAD' and request_data.status == 'PENDING' %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-info text-white small">Lead</div>
+        <div class="card-body p-3">
+            <div class="d-flex gap-2 mb-2">
+                <form method="post" action="{% url 'transfer_app:approve_request' request_data.id %}" class="flex-grow-1">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success w-100" onclick="return confirm('Duyệt yêu cầu này?')"><i class="bi bi-check-circle"></i> Duyệt</button>
+                </form>
+                <button class="btn btn-danger flex-grow-1" onclick="showRejectForm()"><i class="bi bi-x-circle"></i> Từ chối</button>
+            </div>
+            <div id="reject-form" class="border rounded p-3 bg-light" style="display:none;">
+                <form method="post" action="{% url 'transfer_app:reject_request' request_data.id %}">
+                    {% csrf_token %}
+                    <label for="reason" class="form-label small">Lý do từ chối *</label>
+                    <textarea id="reason" name="reason" rows="3" class="form-control mb-2" required></textarea>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger flex-grow-1"><i class="bi bi-send"></i> Gửi từ chối</button>
+                        <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="hideRejectForm()">Đóng</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if user.is_authenticated and user.profile.role == 'DATA_PROCESSOR' %}
+        {% if request_data.status == 'APPROVED' %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-success text-white small">Data Processor</div>
+            <div class="card-body p-3">
+                <div class="d-flex gap-2 mb-2">
+                    <form method="post" action="{% url 'transfer_app:confirm_request' request_data.id %}" class="flex-grow-1">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success w-100" onclick="return confirm('Xác nhận hoàn tất yêu cầu này?')"><i class="bi bi-check2-circle"></i> Xác nhận</button>
+                    </form>
+                    <button class="btn btn-danger flex-grow-1" onclick="showRejectForm()"><i class="bi bi-x-circle"></i> Từ chối</button>
+                </div>
+                <div id="reject-form" class="border rounded p-3 bg-light" style="display:none;">
+                    <form method="post" action="{% url 'transfer_app:reject_request' request_data.id %}">
+                        {% csrf_token %}
+                        <label for="reason" class="form-label small">Lý do từ chối *</label>
+                        <textarea id="reason" name="reason" rows="3" class="form-control mb-2" required></textarea>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger flex-grow-1"><i class="bi bi-send"></i> Gửi từ chối</button>
+                            <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="hideRejectForm()">Đóng</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-secondary small"><em>Data Processor chỉ có thể xử lý yêu cầu đã được Lead duyệt.</em></div>
+        {% endif %}
+    {% endif %}
+</div>
+
+<script>
+function showRejectForm(){document.getElementById('reject-form').style.display='block'}
+function hideRejectForm(){document.getElementById('reject-form').style.display='none'}
+</script>
+{% endblock %}

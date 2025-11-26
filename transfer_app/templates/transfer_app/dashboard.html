@@ -1,0 +1,278 @@
+{% extends "transfer_app/base.html" %}
+{% load tz transfer_extras %}
+
+{% block title %}Dashboard - Group Transfer System{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="card-body p-2">
+        <form method="get" id="filterForm" class="row g-2 align-items-end">
+            <div class="col-12 col-md">
+                <input type="text" class="form-control form-control-sm" name="desc" value="{{ desc_query }}" placeholder="Lý do phiếu">
+            </div>
+            <div class="col-6 col-md-auto">
+                <input type="text" class="form-control form-control-sm" name="msnv" value="{{ msnv_query }}" placeholder="MSNV người được chuyển">
+            </div>
+            <div class="col-6 col-md-auto">
+                <select class="form-select form-select-sm" name="status">
+                    <option value="">Tất cả</option>
+                    {% for st,val in status_choices %}
+                        <option value="{{ st }}" {% if status_query == st %}selected{% endif %}>{{ val }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-auto">
+                <input type="text" class="form-control form-control-sm" name="created_from_display" id="created_from_display" placeholder="mm/dd/yyyy">
+                <input type="hidden" name="created_from" id="created_from" value="{{ created_from }}">
+            </div>
+            <div class="col-6 col-md-auto">
+                <input type="text" class="form-control form-control-sm" name="created_to_display" id="created_to_display" placeholder="mm/dd/yyyy">
+                <input type="hidden" name="created_to" id="created_to" value="{{ created_to }}">
+            </div>
+            <div class="col-6 col-md-auto">
+                <select class="form-select form-select-sm" name="approved_by">
+                    <option value="">Tất cả</option>
+                    {% for name in approved_usernames %}
+                        <option value="{{ name }}" {% if approved_query == name %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-auto">
+                <select class="form-select form-select-sm" name="confirmed_by">
+                    <option value="">Tất cả</option>
+                    {% for name in confirmed_usernames %}
+                        <option value="{{ name }}" {% if confirmed_query == name %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-auto">
+                <input type="text" class="form-control form-control-sm" name="requested_by" value="{{ requested_query }}" placeholder="user / MSNV người tạo">
+            </div>
+            <div class="col-6 col-md-auto">
+                <select class="form-select form-select-sm" name="page_size" onchange="document.getElementById('filterForm').submit()">
+                    {% for size in page_size_options %}
+                        <option value="{{ size }}" {% if page_size == size %}selected{% endif %}>{{ size }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-auto d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Lọc</button>
+                <a href="{% url 'transfer_app:dashboard' %}" class="btn btn-secondary btn-sm">Xóa</a>
+            </div>
+            <div class="col-12 col-md-auto ms-md-auto d-flex gap-2">
+                {% if user.profile.role == 'SUPERVISOR' %}
+                    <a href="{% url 'transfer_app:create_request' %}" class="btn btn-success btn-sm"><i class="bi bi-plus-circle"></i> Tạo</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form id="bulkForm" method="post" action="{% url 'transfer_app:bulk_action' %}" class="d-flex flex-wrap align-items-center gap-3">
+                {% csrf_token %}
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="selectAllToggle" onclick="toggleAll(this)">
+                    <label class="form-check-label small" for="selectAllToggle">Chọn tất cả</label>
+                </div>
+                <input type="hidden" name="action" id="bulkActionInput">
+                <input type="hidden" name="reason" id="bulkReasonInput">
+                {% if user.profile.role == 'LEAD' %}
+                        <button type="button" class="btn btn-info btn-sm" onclick="submitBulk('approve')"><i class="bi bi-check-circle"></i> Duyệt</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="submitBulk('reject')"><i class="bi bi-x-circle"></i> Từ chối</button>
+                {% elif user.profile.role == 'DATA_PROCESSOR' %}
+                        <button type="button" class="btn btn-success btn-sm" onclick="submitBulk('confirm')"><i class="bi bi-check-circle-fill"></i> Xác nhận</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="submitBulk('reject')"><i class="bi bi-x-circle"></i> Từ chối</button>
+                {% elif user.profile.role == 'SUPERVISOR' %}
+                        <button type="button" class="btn btn-warning btn-sm" onclick="submitBulk('cancel')"><i class="bi bi-trash"></i> Hủy</button>
+                {% endif %}
+        </form>
+    </div>
+</div>
+
+<div style="margin-bottom:12px; font-size:13px; color:#6b7280;">Tổng: {{ total_rows }} dòng | Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</div>
+
+{% if batches or standalone %}
+<div class="row">
+    <div class="col-12 col-md-3 mb-3 mb-md-0">
+        <div class="d-flex flex-column gap-3">
+            {% if my_requests %}
+            <div class="card h-100">
+                <div class="card-header py-2 small fw-semibold d-flex justify-content-between align-items-center"><span><i class="bi bi-person"></i> Của tôi</span><a href="{% url 'transfer_app:my_requests_full' %}" class="text-decoration-none small">Xem tất cả »</a></div>
+                <ul class="list-group list-group-flush small">
+                    {% for r in my_requests|slice:':8' %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="text-truncate" style="max-width:70%;">
+                            <a href="{% url 'transfer_app:view_request' r.id %}" class="text-decoration-none">#{{ r.id }} - {{ r.msnv }} → {{ r.to_code }}</a>
+                            <span class="badge {% if r.status == 'PENDING' %}bg-warning text-dark{% elif r.status == 'APPROVED' %}bg-info{% elif r.status == 'CONFIRMED' %}bg-success{% elif r.status == 'REJECTED' %}bg-danger{% elif r.status == 'CANCELED' %}bg-secondary{% endif %}">{{ r.get_status_display }}</span>
+                        </div>
+                        <div class="text-muted" style="font-size:11px;">{{ r.created_at|relative_time }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% if approved_by_me %}
+            <div class="card h-100">
+                <div class="card-header py-2 small fw-semibold d-flex justify-content-between align-items-center"><span><i class="bi bi-check-circle"></i> Đã duyệt</span><a href="{% url 'transfer_app:approved_by_me_full' %}" class="text-decoration-none small">Xem tất cả »</a></div>
+                <ul class="list-group list-group-flush small">
+                    {% for r in approved_by_me|slice:':8' %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="text-truncate" style="max-width:70%;">
+                            <a href="{% url 'transfer_app:view_request' r.id %}" class="text-decoration-none">#{{ r.id }} - {{ r.msnv }} → {{ r.to_code }}</a>
+                            <span class="badge {% if r.status == 'PENDING' %}bg-warning text-dark{% elif r.status == 'APPROVED' %}bg-info{% elif r.status == 'CONFIRMED' %}bg-success{% elif r.status == 'REJECTED' %}bg-danger{% elif r.status == 'CANCELED' %}bg-secondary{% endif %}">{{ r.get_status_display }}</span>
+                        </div>
+                        <div class="text-muted" style="font-size:11px;">{{ r.approved_at|relative_time }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% if confirmed_by_me %}
+            <div class="card h-100">
+                <div class="card-header py-2 small fw-semibold d-flex justify-content-between align-items-center"><span><i class="bi bi-check2-circle"></i> Đã xác nhận</span><a href="{% url 'transfer_app:confirmed_by_me_full' %}" class="text-decoration-none small">Xem tất cả »</a></div>
+                <ul class="list-group list-group-flush small">
+                    {% for r in confirmed_by_me|slice:':8' %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="text-truncate" style="max-width:70%;">
+                            <a href="{% url 'transfer_app:view_request' r.id %}" class="text-decoration-none">#{{ r.id }} - {{ r.msnv }} → {{ r.to_code }}</a>
+                            <span class="badge {% if r.status == 'PENDING' %}bg-warning text-dark{% elif r.status == 'APPROVED' %}bg-info{% elif r.status == 'CONFIRMED' %}bg-success{% elif r.status == 'REJECTED' %}bg-danger{% elif r.status == 'CANCELED' %}bg-secondary{% endif %}">{{ r.get_status_display }}</span>
+                        </div>
+                        <div class="text-muted" style="font-size:11px;">{{ r.confirmed_at|relative_time }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-12 col-md-9">
+<ul class="batch-list" style="list-style:none; padding:0; margin:0;">
+    {% for batch_data in batches %}
+        <li class="batch-item {% if batch_data.batch.created_at|is_old %}border-danger{% endif %}" style="border:1px solid #e5e7eb; border-radius:6px; margin-bottom:12px; background:#fff;">
+            <div class="batch-header-wrapper {% if batch_data.batch.created_at|is_old %}old-batch-bg{% endif %}" style="display:flex; align-items:flex-start; gap:8px; padding:8px 10px; background:#f9fafb; border-bottom:1px solid #e5e7eb; flex-wrap:wrap;">
+                <input type="checkbox" class="batchCheck" onclick="toggleBatch(this, '{{ batch_data.batch.id }}')" />
+                <div style="flex:1;">
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                        <span class="badge bg-primary" style="font-size:14px;">{{ batch_data.batch.batch_number }}</span>
+                        <span style="color:#374151; font-weight:500;">{{ batch_data.batch.description }}</span>
+                        <span class="badge" style="background:#e0e7ff; color:#1e3a8a;">Tạo bởi {{ batch_data.batch.created_by.username }}</span>
+                        <span style="color:#9ca3af; font-size:12px;">{{ batch_data.requests|length }} yêu cầu</span>
+                        <span style="color:#6b7280; font-size:12px;">{{ batch_data.batch.created_at|relative_time }}</span>
+                        {% if batch_data.batch.created_at|is_old %}
+                          <span class="badge bg-danger">Lâu (>30 ngày)</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <ul style="list-style:none; margin:0; padding:8px 12px;">
+                {% for req in batch_data.requests %}
+                    <li style="display:flex; align-items:center; gap:8px; padding:8px 6px; border-bottom:1px dashed #e5e7eb; flex-wrap:wrap;">
+                        <input type="checkbox" name="ids" value="{{ req.id }}" form="bulkForm" class="rowCheck batch-{{ batch_data.batch.id }}-check" />
+                        <div class="flex-grow-1 text-truncate">
+                            <strong>#{{ req.id }}</strong>
+                            {{ req.msnv }}
+                            <span class="text-muted">•</span> {{ req.from_code }} → {{ req.to_code }}
+                            <span class="text-muted">•</span> {{ req.effective_date|date:"d/m/Y" }}
+                            <span class="text-muted">•</span>
+                            {% if req.is_permanent %}<span class="badge bg-success">Vĩnh viễn</span>{% else %}<span class="badge bg-warning text-dark">Tạm thời</span>{% endif %}
+                            <span class="text-muted">•</span>
+                            {% if req.status == 'PENDING' %}<span class="badge bg-warning text-dark">Chờ duyệt</span>
+                            {% elif req.status == 'APPROVED' %}<span class="badge bg-info">Đã duyệt</span>
+                            {% elif req.status == 'CONFIRMED' %}<span class="badge bg-success">Hoàn tất</span>
+                            {% elif req.status == 'REJECTED' %}<span class="badge bg-danger">Từ chối</span>
+                            {% elif req.status == 'CANCELED' %}<span class="badge bg-secondary">Đã hủy</span>{% endif %}
+                            <span class="text-muted">•</span> {{ req.requested_by.username }}
+                            {% if req.approved_by %}<span class="text-muted">•</span> <span class="badge bg-info text-dark">{{ req.approved_by.username }}</span>{% endif %}
+                            {% if req.confirmed_by %}<span class="text-muted">•</span> <span class="badge bg-success">{{ req.confirmed_by.username }}</span>{% endif %}
+                            <span class="text-muted" style="font-size:11px;">• {{ req.created_at|relative_time }}</span>
+                        </div>
+                        <div class="ms-auto"><a href="{% url 'transfer_app:view_request' req.id %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Xem</a></div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </li>
+    {% endfor %}
+    {% for req in standalone %}
+        <li class="batch-item" style="border:1px solid #e5e7eb; border-radius:6px; margin-bottom:12px; background:#fff;">
+            <div style="display:flex; align-items:center; gap:8px; padding:8px 6px; flex-wrap:wrap;">
+                <input type="checkbox" name="ids" value="{{ req.id }}" form="bulkForm" class="rowCheck" />
+                <div class="flex-grow-1 text-truncate">
+                    <strong>#{{ req.id }}</strong>
+                    {{ req.msnv }}
+                    <span class="text-muted">•</span> {{ req.from_code }} → {{ req.to_code }}
+                    <span class="text-muted">•</span> {{ req.effective_date|date:"d/m/Y" }}
+                    <span class="text-muted">•</span>
+                    {% if req.is_permanent %}<span class="badge bg-success">Vĩnh viễn</span>{% else %}<span class="badge bg-warning text-dark">Tạm thời</span>{% endif %}
+                    <span class="text-muted">•</span>
+                    {% if req.status == 'PENDING' %}<span class="badge bg-warning text-dark">Chờ duyệt</span>
+                    {% elif req.status == 'APPROVED' %}<span class="badge bg-info">Đã duyệt</span>
+                    {% elif req.status == 'CONFIRMED' %}<span class="badge bg-success">Hoàn tất</span>
+                    {% elif req.status == 'REJECTED' %}<span class="badge bg-danger">Từ chối</span>
+                    {% elif req.status == 'CANCELED' %}<span class="badge bg-secondary">Đã hủy</span>{% endif %}
+                    <span class="text-muted">•</span> {{ req.requested_by.username }}
+                    {% if req.approved_by %}<span class="text-muted">•</span> <span class="badge bg-info text-dark">{{ req.approved_by.username }}</span>{% endif %}
+                    {% if req.confirmed_by %}<span class="text-muted">•</span> <span class="badge bg-success">{{ req.confirmed_by.username }}</span>{% endif %}
+                    <span class="text-muted" style="font-size:11px;">• {{ req.created_at|relative_time }}</span>
+                </div>
+                <div class="ms-auto"><a href="{% url 'transfer_app:view_request' req.id %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i> Xem</a></div>
+            </div>
+        </li>
+    {% endfor %}
+</ul>
+    </div>
+</div>
+{% else %}
+<div class="card" style="text-align: center; padding: 40px;">
+    <p style="color: #6b7280; font-size: 16px;">Không có yêu cầu nào.</p>
+    {% if user.profile.role == 'SUPERVISOR' %}
+        <a href="{% url 'transfer_app:create_request' %}" class="btn btn-primary" style="margin-top: 20px;">Tạo yêu cầu đầu tiên</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="pagination" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:16px;">
+    {% if page_obj.has_previous %}
+        <a class="btn btn-secondary" href="?page={{ page_obj.previous_page_number }}&page_size={{ page_size }}{% if desc_query %}&desc={{ desc_query }}{% endif %}{% if msnv_query %}&msnv={{ msnv_query }}{% endif %}{% if status_query %}&status={{ status_query }}{% endif %}{% if created_from %}&created_from={{ created_from }}{% endif %}{% if created_to %}&created_to={{ created_to }}{% endif %}{% if approved_query %}&approved_by={{ approved_query }}{% endif %}{% if confirmed_query %}&confirmed_by={{ confirmed_query }}{% endif %}{% if requested_query %}&requested_by={{ requested_query }}{% endif %}">« Trước</a>
+    {% endif %}
+    <span style="padding:6px 10px; background:#f3f4f6; border-radius:4px;">Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+        <a class="btn btn-secondary" href="?page={{ page_obj.next_page_number }}&page_size={{ page_size }}{% if desc_query %}&desc={{ desc_query }}{% endif %}{% if msnv_query %}&msnv={{ msnv_query }}{% endif %}{% if status_query %}&status={{ status_query }}{% endif %}{% if created_from %}&created_from={{ created_from }}{% endif %}{% if created_to %}&created_to={{ created_to }}{% endif %}{% if approved_query %}&approved_by={{ approved_query }}{% endif %}{% if confirmed_query %}&confirmed_by={{ confirmed_query }}{% endif %}{% if requested_query %}&requested_by={{ requested_query }}{% endif %}">Sau »</a>
+    {% endif %}
+</div>
+
+
+<script>
+function toggleAll(master){
+    const state = master.checked;
+    document.querySelectorAll('.rowCheck').forEach(c => c.checked = state);
+    document.querySelectorAll('.batchCheck').forEach(c => c.checked = state);
+}
+function toggleBatch(master, batchId){
+    const checks = document.querySelectorAll('.batch-' + batchId + '-check');
+    checks.forEach(c => c.checked = master.checked);
+}
+function submitBulk(action){
+    const form = document.getElementById('bulkForm');
+    const selected = document.querySelectorAll('.rowCheck:checked');
+    if(selected.length === 0){
+        alert('Chưa chọn yêu cầu nào');
+        return;
+    }
+    document.getElementById('bulkActionInput').value = action;
+    if(action === 'reject'){
+        const reason = prompt('Nhập lý do từ chối:');
+        if(!reason){
+            alert('Lý do bắt buộc');
+            return;
+        }
+        document.getElementById('bulkReasonInput').value = reason;
+    } else {
+        document.getElementById('bulkReasonInput').value = '';
+    }
+    form.submit();
+}
+</script>
+</script>
+{% endblock %}

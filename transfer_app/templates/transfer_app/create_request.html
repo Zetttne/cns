@@ -1,0 +1,61 @@
+{% extends "transfer_app/base.html" %}
+
+{% block title %}Tạo yêu cầu chuyển nhóm{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 760px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h4 mb-0"><i class="bi bi-plus-circle"></i> Tạo yêu cầu chuyển nhóm</h2>
+            <a href="{% url 'transfer_app:dashboard' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Quay lại</a>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                <div class="col-12">
+                    <label for="msnv" class="form-label small">MSNV * <span class="text-muted">(Nhiều MSNV: cách nhau bởi khoảng trắng, dấu phẩy hoặc xuống dòng)</span></label>
+                    <textarea id="msnv" name="msnv" required rows="4" class="form-control" placeholder="Ví dụ: NV001 NV002 NV003 hoặc NV001, NV002, NV003"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label for="from_code" class="form-label small">Mã nhóm hiện tại (5 số) *</label>
+                    <input type="text" id="from_code" name="from_code" required pattern="\d{5}" maxlength="5" class="form-control" placeholder="12345">
+                </div>
+                <div class="col-md-6">
+                    <label for="to_code" class="form-label small">Mã nhóm chuyển đến (5 số) *</label>
+                    <input type="text" id="to_code" name="to_code" required pattern="\d{5}" maxlength="5" class="form-control" placeholder="54321">
+                </div>
+                <div class="col-md-6">
+                    <label for="effective_date" class="form-label small">Ngày hiệu lực *</label>
+                    <input type="date" id="effective_date" name="effective_date" required class="form-control">
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="is_permanent" name="is_permanent">
+                        <label class="form-check-label" for="is_permanent">Chuyển cố định</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label for="designated_lead" class="form-label small">Lead duyệt *</label>
+                    <select id="designated_lead" name="designated_lead" class="form-select" required>
+                        <option value="">-- Chọn Lead --</option>
+                        {% for lead in leads %}
+                            <option value="{{ lead.id }}">{{ lead.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label for="batch_description" class="form-label small">Lý do chuyển đổi <span class="text-muted">(Lead cần biết)</span></label>
+                    <textarea id="batch_description" name="batch_description" rows="2" class="form-control" placeholder="Lý do chuyển nhóm"></textarea>
+                </div>
+                <div class="col-12 d-flex gap-2 pt-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-send"></i> Gửi yêu cầu</button>
+                    <a href="{% url 'transfer_app:dashboard' %}" class="btn btn-secondary flex-grow-1"><i class="bi bi-x"></i> Hủy</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById('effective_date').min = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}
